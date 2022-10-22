@@ -77,66 +77,87 @@ sf1_2010_vars %>%
 ```
 
 
-## Example 1: median age by state
+## Example: median age by WA state county
 
-Get the data:
-```{r get median age by state, message = FALSE, warning=FALSE, echo=TRUE}
-## age10 is a tibble, 52 rows (each state), 4 columns
-age10 <- get_decennial(geography = "state", 
-                                variables = "P013001", 
-                                year = 2010) 
+Get median age by WA state county
+```{r get median age by WA county, message = FALSE, warning=FALSE, echo=TRUE}
+age_WAcounties_2010 <- get_decennial(geography = "county", 
+                                     state = "WA", 
+                                     variables = "P013001", 
+                                     year = 2010,
+                                     geometry = TRUE)
+
+age_WAcounties_2010 <- age_WAcounties_2010 %>% 
+    mutate(NAME=gsub(" County, Washington","",NAME))
 ```
-Plot it:
-```{r plot median age by state}
-age10 %>%
+
+and make a graph
+
+```{r plot it}
+age_WAcounties_2010 %>%
     ggplot(aes(x = value, y = reorder(NAME, value))) + 
     geom_point() +
-    labs(x="Median age", y="", title = "Median age by state")
+    labs(x="Median age", y="", title = "Median age by WA state county (2010 census)")
 ```
 
+now plot on a map
 
-## Example 2 - spatial data
-
-This example gets household income by tract in Tarrant county, Texas and plots it spatially:
-
-```{r tract mapping example - get data, message = FALSE, warning=FALSE, echo=TRUE}
-tarr <- get_acs(geography = "tract", variables = "B19013_001",
-                state = "TX", county = "Tarrant", geometry = TRUE, year = 2020)
-
-ggplot(tarr, aes(fill = estimate, color = estimate)) +
+```{r spatial plot of age by WA county}
+ggplot(age_WAcounties_2010, aes(fill = value, color = value)) +
     geom_sf() +
     coord_sf(crs = 26914) +
-    scale_fill_viridis(option = "magma") +
-    scale_color_viridis(option = "magma") +
-    labs(title="Household income by tract in Tarrant county, Texas")
+    scale_fill_viridis(option = "magma", direction=-1) +
+    scale_color_viridis(option = "magma", direction=-1) +
+    labs(title="Median age by county, WA state (2010 census)", fill="age", color="age")
 ```
 
-This gets data by county (household income in Vermont)
+We can also get age by zip code. 
 
-```{r county mapping example - get data, message = FALSE, warning=FALSE, echo=TRUE}
-vt <- get_acs(geography = "county", variables = "B19013_001", state = "VT", year = 2019)
+```{r get median age by WA zip code, message = FALSE, warning=FALSE, echo=TRUE}
+age_WA_zipCodes_2010 <- get_decennial(
+    geography = "zip code tabulation area", 
+    state = "WA", 
+    #county="King County", ## doesn't seem to work. tried it a few ways
+    variables = "P013001", 
+    year = 2010,
+    geometry = TRUE)
 
-vt %>%
-    mutate(NAME = gsub(" County, Vermont", "", NAME)) %>%
-    ggplot(aes(x = estimate, y = reorder(NAME, estimate))) +
-    geom_errorbar(aes(xmin = estimate - moe, xmax = estimate + moe), width = 0.3, size = 0.5) +
-    geom_point(color = "red", size = 3) +
-    labs(title = "Household income by county in Vermont",
-         subtitle = "2015-2019 American Community Survey",
-         y = "",
-         x = "ACS estimate (bars represent margin of error)")
+age_WA_zipCodes_2010 <- age_WA_zipCodes_2010 %>%
+    mutate(NAME=gsub(", Washington","",NAME)) %>%
+    mutate(NAME=gsub("ZCTA5 ","",NAME))
 ```
 
-More on the spatial data, from [here](https://walker-data.com/tidycensus/articles/spatial-data.html):
-"Our object `tarr` looks much like the basic tidycensus output, but with a geometry list-column describing the geometry of each feature, using the geographic coordinate system NAD 1983 (EPSG: 4269) which is the default for Census shapefiles. tidycensus uses the Census cartographic boundary shapefiles for faster processing; if you prefer the TIGER/Line shapefiles, set cb = FALSE in the function call."
+Show median age on a map.   The holes indicate that some zip codes are missing from the dataset (or some areas don't have zip codes?  that's hard to imagine).
+
+```{r spatial plot of age by WA zip code, message = FALSE, warning=FALSE, echo=TRUE}
+ggplot(age_WA_zipCodes_2010, aes(fill = value, color = value)) +
+    geom_sf() +
+    coord_sf(crs = 26914) +
+    scale_fill_viridis(option = "magma", direction=-1) +
+    scale_color_viridis(option = "magma", direction=-1) +
+    labs(title="Median age by zip code, WA state (2010 census)", fill="age", color="age")
+```
+
+xxx to do:  
+    + learn about ways to zoom in on these plots, show them at a different angle (explore `?coord_sf`)  
+    + find variable code to get population data (and perhaps registered voter data)
+
+More notes on the spatial data, from [here](https://walker-data.com/tidycensus/articles/spatial-data.html):
+"data objects look much like the basic tidycensus output, but with a geometry list-column describing the geometry of each feature, using the geographic coordinate system NAD 1983 (EPSG: 4269) which is the default for Census shapefiles. tidycensus uses the Census cartographic boundary shapefiles for faster processing; if you prefer the TIGER/Line shapefiles, set cb = FALSE in the function call."
 
 ## Exporting spatial data
 
 We can save data "shapefile" or "GeoJSON" files for use in external GIS or visualization applications using `st_write` (sf package). Use in ArcGIS, QGIS, Tableau, or any other application that reads shapefiles.
 ```{r writing spatial data example}
-tarr_output_file <- "test_sf_files/tarr.shp"
-if (!file.exists(tarr_output_file)) {
-    st_write(tarr, tarr_output_file)
+
+test_export_dir <- "test_sf_files"
+if (!dir.exists(test_export_dir)) {dir.create(test_export_dir)}
+
+age_WA_zipCodes_2010_output_file <- paste(test_export_dir, 
+                                          "age_WA_zipCodes_2010.shp",
+                                          sep="/")
+if (!file.exists(age_WA_zipCodes_2010_output_file)) {
+    st_write(age_WA_zipCodes_2010, age_WA_zipCodes_2010_output_file)
 }
 ```
 
