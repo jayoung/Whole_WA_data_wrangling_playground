@@ -1,3 +1,9 @@
+# each user should make their own censusAPIkey.txt file
+censusAPIkey.txt
+
+# some output
+test_sf_files
+
 # History files
 .Rhistory
 .Rapp.history
