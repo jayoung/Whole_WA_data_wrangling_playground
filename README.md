@@ -1,11 +1,11 @@
-# Whole_WA_data_wrangling
+# Whole_WA_data_wrangling_playground
 
 Goal:  playground to test code to look at Whole WA data
 
 The git repo lives [here](https://github.com/jayoung/Whole_WA_data_wrangling) 
 
-Who's playing?
--  Janet Young. I started this repo. My expertise is mostly in R, so there's a bias towards R code.
+Who's playing? Everyone is welcome.
+- Janet Young. I started this repo. My expertise is mostly in R, so there's a bias towards R code. (I'm a beginner at using git for team projects - might need advice on handling pull requests, etc, use of different branches, etc)
 
 
 ## Geography/mapping tools
