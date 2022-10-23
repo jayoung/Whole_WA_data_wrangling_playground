@@ -16,11 +16,25 @@ the tidycensus R package looks useful.  See [`test_geography_code.md`](test_geog
 
 #### R packages
 
-This [blog post](https://towardsdatascience.com/the-best-spatial-analysis-packages-to-use-in-r-35855069f8b2) discusses several packages, as does [this page](https://www.zevross.com/blog/2019/05/01/unscientific-list-of-popular-r-packages-for-spatial-analysis/) and [this page](https://www.gislounge.com/r-packages-for-spatial-analysis/)
+This [blog post](https://towardsdatascience.com/the-best-spatial-analysis-packages-to-use-in-r-35855069f8b2) discusses several packages, as does [this page](https://www.zevross.com/blog/2019/05/01/unscientific-list-of-popular-r-packages-for-spatial-analysis/) and [this page](https://www.gislounge.com/r-packages-for-spatial-analysis/) and [this](https://crd230.github.io/lab3.html)
 
 - `tigris` R package - map data?
 - [`GISTools`](https://rdrr.io/cran/GISTools/man/GISTools-package.html)
 - [`maps`](https://cran.r-project.org/web/packages/maps/maps.pdf)
+- `mapview` for interactive mapping
+
+
+"For help deciding on an appropriate coordinate reference system for your project, take a look at the [crsuggest package](https://github.com/walkerke/crsuggest."
+
+More advice [here](https://walker-data.com/census-r/census-geographic-data-and-applications-in-r.html)
+
+If shoreline boundaries look odd in plots, see [here](options(device = "X11")
+X11.options(type = "cairo")
+)
+
+Understanding coordinate reference systems explained [here](WA_state_ZipCodes)
+
+How do two geographic areas overlap each other - see [here](https://crd230.github.io/lab3.html)
 
 ## Geography/mapping datasets
 

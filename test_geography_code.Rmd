@@ -139,7 +139,7 @@ ggplot(age_WA_zipCodes_2010, aes(fill = value, color = value)) +
 ```
 
 xxx to do:  
-    + learn about ways to zoom in on these plots, show them at a different angle (explore `?coord_sf`)  
+    + learn about ways to zoom in on these plots, show them at a different angle (explore `?coord_sf`)  "For help deciding on an appropriate coordinate reference system for your project, take a look at the [crsuggest package](https://github.com/walkerke/crsuggest."
     + find variable code to get population data (and perhaps registered voter data)
 
 More notes on the spatial data, from [here](https://walker-data.com/tidycensus/articles/spatial-data.html):
