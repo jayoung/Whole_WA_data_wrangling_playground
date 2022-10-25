@@ -36,6 +36,10 @@ Understanding coordinate reference systems explained [here](WA_state_ZipCodes)
 
 How do two geographic areas overlap each other - see [here](https://crd230.github.io/lab3.html)
 
+Vocabulary: within, overlaps, intersects, contains, etc, explained [here](https://en.wikipedia.org/wiki/Spatial_relation)
+
+Intersects versus overlaps - explained [here](https://resources.arcgis.com/en/help/arcobjects-net/componentHelp/index.html#//002500000086000000), maybe?  Intersects is true if the two objects have ANY spatial relationship.   For 'overlaps' to be true the intersection of the two objects must have the same dimensions as the original two shapes (i.e. for area/area to overlap, they have to have a non-zero area in the overlap, not just a line)
+
 ## Geography/mapping datasets
 
 tidycensus R package also allows access to mapping data.  See [`test_geography_code.md`](test_geography_code.md)
