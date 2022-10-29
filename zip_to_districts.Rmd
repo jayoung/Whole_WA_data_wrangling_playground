@@ -183,7 +183,7 @@ Sanity check - compare with Kelsey's list [here](https://docs.google.com/spreads
 
 Kelsey_LD1 <- c("98011", "98012", "98021", "98034", "98036", "98043", "98072", "98077", "98296")
 
-temp <- zipCodes_by_stateLD_intersectLargest_plain %>% 
+temp <- zipCodes_by_stateLD_intersect_plain %>% 
     filter(congressional_district=="State Senate District 1") %>% 
     arrange(zip_code) %>% 
     mutate(inKelseyList = zip_code %in% Kelsey_LD1) 
@@ -215,3 +215,19 @@ tm_shape((WA_state_stateLegDists %>%
     
 ```
 
+
+plot 98012 and the three districts it might overlap with. 21 is NOT the largest. this is WRONG
+
+```{r another plot}
+# load("zip_to_districts_Robjects/WA_state_stateLegDists.rda")
+
+tm_shape((WA_state_stateLegDists %>% 
+              filter(SLDUST %in% c("021","001","044") ))) +
+    tm_borders(col = "blue") +
+    tm_text("SLDUST", col = "blue") +
+    
+    tm_shape( (WA_state_zipCodes %>% filter(ZCTA5CE20=="98028")) ) +  
+    tm_borders(col = "red") +
+    tm_text("ZCTA5CE20", col = "red") 
+    
+```

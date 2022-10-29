@@ -1,4 +1,4 @@
-###### first R session - get the geograpy data (not including zip codes), save as R objects
+###### first R session - get the geography data (not including zip codes), save as R objects
 library(tigris)
 library(sf)
 options(tigris_use_cache = TRUE)
@@ -186,6 +186,7 @@ zipCodes_by_stateLD_intersect_plain <- zipCodes_by_stateLD_intersect %>%
     as_tibble() %>%
     select(-geometry) %>% 
     arrange(NAMELSAD) %>% 
+    ## xxxx fix not congressional_district
     rename(congressional_district=NAMELSAD) %>% 
     rename(zip_code=ZCTA5CE20)
 
