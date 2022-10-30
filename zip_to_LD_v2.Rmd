@@ -45,6 +45,34 @@ ld1_zip_maps <- all_zip_maps %>%
     filter(ZCTA5CE20 %in% ld1_zips$zip_code)
 ```
 
+Functionalize ^
+```{r}
+library(glue)
+
+map_ld_zips <- function(district_number) |>
+  
+  
+  
+WA_state_stateLegDists |>
+  nest(data = -NAMELSAD)
+
+ld1 <- WA_state_stateLegDists %>% 
+    filter(NAMELSAD=="State Senate District 1")
+
+ld1_zips <- zipCodes_by_stateLD_intersect_plain %>% 
+    # xx congressional_district will be renamed
+    filter(congressional_district=="State Senate District 1") %>% 
+    arrange(zip_code)
+
+#xxx maybe we filter zips that aren't in WA WA_state_zipCodes
+all_zip_maps <- WA_state_zipCodes %>% 
+    filter(ZCTA5CE20 >= 98000) %>% 
+    filter(ZCTA5CE20 <= 99404)
+
+ld1_zip_maps <- all_zip_maps %>% 
+    filter(ZCTA5CE20 %in% ld1_zips$zip_code)
+```
+
 ```{r}
 ## shade the ld
 # thicker 
