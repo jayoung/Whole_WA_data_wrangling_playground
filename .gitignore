@@ -1,6 +1,9 @@
 # each user should make their own censusAPIkey.txt file
 censusAPIkey.txt
 
+# this folder contains data we don't want to share with the world 
+secure_files
+
 # some output
 test_sf_files
 zip_to_districts_Robjects

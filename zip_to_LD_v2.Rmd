@@ -32,8 +32,8 @@ ld1 <- WA_state_stateLegDists %>%
     filter(NAMELSAD=="State Senate District 1")
 
 ld1_zips <- zipCodes_by_stateLD_intersect_plain %>% 
-    # xx congressional_district will be renamed
-    filter(congressional_district=="State Senate District 1") %>% 
+    # xx leg_dist will be renamed
+    filter(leg_dist=="State Senate District 1") %>% 
     arrange(zip_code)
 
 #xxx maybe we filter zips that aren't in WA WA_state_zipCodes
@@ -63,3 +63,6 @@ tm_shape(ld1_zip_maps) +
     
 
 ```
+
+
+

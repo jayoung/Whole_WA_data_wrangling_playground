@@ -231,3 +231,13 @@ tm_shape((WA_state_stateLegDists %>%
     tm_text("ZCTA5CE20", col = "red") 
     
 ```
+
+```{r}
+
+zipCodes_by_stateLD_intersect_plain_split <-  split(zipCodes_by_stateLD_intersect_plain, zipCodes_by_stateLD_intersect_plain$congressional_district)
+
+## change col headers
+zipCodes_by_stateLD_intersect_plain %>% 
+    mutate(congressional_district=gsub("State Senate District ", "", ) )
+pivot_wider(, names_from = congressional_district)
+```

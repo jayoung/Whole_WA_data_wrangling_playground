@@ -186,12 +186,15 @@ zipCodes_by_stateLD_intersect_plain <- zipCodes_by_stateLD_intersect %>%
     as_tibble() %>%
     select(-geometry) %>% 
     arrange(NAMELSAD) %>% 
-    ## xxxx fix not congressional_district
-    rename(congressional_district=NAMELSAD) %>% 
+    rename(leg_dist=NAMELSAD) %>% 
     rename(zip_code=ZCTA5CE20)
 
 save(zipCodes_by_stateLD_intersect, file="zip_to_districts_Robjects/zipCodes_by_stateLD_intersect.rda")
 save(zipCodes_by_stateLD_intersect_plain, file="zip_to_districts_Robjects/zipCodes_by_stateLD_intersect_plain.rda")
+
+# load("zip_to_districts_Robjects/zipCodes_by_stateLD_intersect.rda")
+# load("zip_to_districts_Robjects/zipCodes_by_stateLD_intersect_plain.rda")
+
 
 
 ###### sixth R session - try at zip code - LD overlaps, st_intersects method with largest=TRUE option.  Save full R object and plain zip-congDist table
@@ -224,8 +227,12 @@ zipCodes_by_stateLD_intersectLargest_plain <- zipCodes_by_stateLD_intersectLarge
     as_tibble() %>%
     select(-geometry) %>% 
     arrange(NAMELSAD) %>% 
-    rename(congressional_district=NAMELSAD) %>% 
+    rename(leg_dist=NAMELSAD) %>% 
     rename(zip_code=ZCTA5CE20)
 
 save(zipCodes_by_stateLD_intersectLargest, file="zip_to_districts_Robjects/zipCodes_by_stateLD_intersectLargest.rda")
 save(zipCodes_by_stateLD_intersectLargest_plain, file="zip_to_districts_Robjects/zipCodes_by_stateLD_intersectLargest_plain.rda")
+
+
+# load("zip_to_districts_Robjects/zipCodes_by_stateLD_intersectLargest.rda")
+# load("zip_to_districts_Robjects/zipCodes_by_stateLD_intersectLargest_plain.rda")

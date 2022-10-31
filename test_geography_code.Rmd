@@ -17,7 +17,7 @@ library(sf)
 
 # each user should obtain a Census API key from http://api.census.gov/data/key_signup.html
 # save it in a file called censusAPIkey.txt (this will NOT be synced to github)
-myKey <- scan("censusAPIkey.txt", what="character", quiet=TRUE)
+myKey <- scan("secure_files/censusAPIkey.txt", what="character", quiet=TRUE)
 census_api_key(myKey)
 ```
 
