@@ -1,12 +1,12 @@
-# each user should make their own censusAPIkey.txt file
-censusAPIkey.txt
+# downloads directory is for stuff we can easily download and don't want to store on github 
+downloads
 
 # this folder contains data we don't want to share with the world 
 secure_files
 
-# some output
-test_sf_files
-zip_to_districts_Robjects
+# script output. might be large, and we don't want to sync large stuff to github if we can reconstruct it using code
+saved_R_objects
+testStuff
 
 # History files
 .Rhistory

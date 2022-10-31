@@ -1,0 +1,192 @@
+---
+title: "test tigris package"
+author: "Janet Young"
+date: "`r Sys.Date()`"
+knit: (function(inputFile, encoding) {rmarkdown::render(inputFile,  encoding=encoding, output_dir="../reports") })
+output: github_document
+always_allow_html: true
+---
+
+just messing around - this doc probably doesn't knit yet.
+
+```{r setup, include=FALSE}
+library(tigris)
+library(tidyverse)
+library(ggplot2)
+library(sf) # for functions like st_join
+#library(mapview) # interactive mapping!
+
+## so we don't have to download big data multiple times
+options(tigris_use_cache = TRUE)
+
+
+### maybe need something like this to help slow plotting on mac Rstudio?
+# https://github.com/tidyverse/ggplot2/issues/2718
+# https://community.rstudio.com/t/ggplot2-geom-sf-performance/3251/9
+# https://github.com/tidyverse/ggplot2/issues/2655
+options(device = "X11")
+X11.options(type = "cairo")
+
+```
+
+I'm trying out the [tigris package](https://github.com/walkerke/tigris)
+
+```{r get state geog data}
+st <- states()
+```
+```{r plot states}
+# plot(st$geometry) very slow!
+
+
+# there's a problem using quartz to plot, so this is very slow on a mac Rstudio
+# ggplot(st) + 
+#   geom_sf() + 
+#   theme_void() # strips axes labels
+
+
+
+```
+
+
+```{r download WA state boundaries}
+WA_counties <- counties("WA")
+WA_state_LDs <- state_legislative_districts("WA")
+WA_state_CongDists <- congressional_districts("WA")
+WA_state_VotingDists <- voting_districts("WA")	
+WA_state_ZipCodes <-  zctas("WA") 
+
+# format(object.size(WA_counties), units = "auto")
+#  2Mb
+# format(object.size(WA_state_LDs), units = "auto")
+# 2.8Mb
+# format(object.size(WA_state_CongDists), units = "auto")
+# 1.3Mb
+# format(object.size(WA_state_VotingDists), units = "auto")
+# 29 Mb
+# format(object.size(WA_state_ZipCodes), units = "auto")
+# 813.2Mb
+# 
+# dim(WA_counties)
+# # [1] 39 18
+# dim(WA_state_LDs)
+# # [1] 49 13
+# dim(WA_state_CongDists)
+# # [1] 10 13
+# dim(WA_state_VotingDists)	
+# # [1] 7434   15
+# dim(WA_state_ZipCodes) 
+# # [1] 33791    10 
+
+# plot(WA_counties$geometry) very slow!
+# interactive mapping!
+# mapview(WA_counties)
+```
+
+```{r plot counties}
+# there's a problem using quartz to plot when there are a ton of points, so this is very slow on a mac Rstudio. make sure we set options 
+# options(device = "X11")
+# X11.options(type = "cairo")
+# 
+# ggplot(WA_counties) +
+#   geom_sf() +
+#   theme_void() # strips axes labels
+```
+Let's say we want to get the zip codes in King county
+
+```{r}
+
+##  this shows the difference between join = st_within and join = st_intersect https://crd230.github.io/lab3.html#within
+
+## join=st_intersects - if a zip code touches a district, it gets counted. Many zip codes touch >1 district
+zipCodes_by_CongDist_intersect <- st_join(WA_state_ZipCodes, 
+                                WA_state_CongDists, 
+                                join = st_intersects, 
+                                left=FALSE)
+zipCodes_by_CongDist_intersect_plain <- zipCodes_by_CongDist_intersect %>%
+    select(ZCTA5CE20,NAMELSAD) %>%
+    as_tibble() %>%
+    select(-geometry) %>% 
+    arrange(NAMELSAD)
+
+## join=st_within - a zip code must be totally within a district to be counted
+zipCodes_by_CongDist_within <- st_join(WA_state_ZipCodes, 
+                                WA_state_CongDists, 
+                                join = st_within, 
+                                left=FALSE)
+
+zipCodes_by_CongDist_within_plain <- zipCodes_by_CongDist_within %>%
+    select(ZCTA5CE20,NAMELSAD) %>%
+    as_tibble() %>%
+    select(-geometry) %>% 
+    arrange(NAMELSAD)
+```
+
+```{r}
+## some zip codes are probably in >1 district:
+# they were when I used st_intersect, but now I use st_within
+zipCodes_by_CongDist_intersect_plain %>% 
+    count(ZCTA5CE20) %>% 
+    rename(numCongDistPerZip=n) %>% 
+    count(numCongDistPerZip) %>% 
+    rename(numZipCodes=n)
+    
+```
+```{r}
+zipCodes_by_CongDist_within_plain %>% 
+    count(ZCTA5CE20) %>% 
+    rename(numCongDistPerZip=n) %>% 
+    count(numCongDistPerZip) %>% 
+    rename(numZipCodes=n)
+```
+```{r}
+## show zip codes that are in 3 districts
+zipCodes_by_CongDist_plain %>% 
+    count(ZCTA5CE20) %>% 
+    filter(n==3)
+
+## one of those zip codes is 98040 = Mercer Island
+# Mercer Island is only in dist 9 according to wikipedia (https://en.wikipedia.org/wiki/Washington%27s_9th_congressional_district)
+# I suspect it is showing up 
+zipCodes_by_CongDist_plain %>% 
+    filter(ZCTA5CE20=="98040")
+
+## show zip codes that are in 3 districts
+zipCodes_by_CongDist_within_plain %>% 
+    count(ZCTA5CE20) %>% 
+    filter(n==3)
+
+# we might be missing zip codes that are not entirely within an LD (because they overlap >1 LD - not sure)
+
+
+#  do the same thing with WA_state_LDs
+
+# zipCodes_by_CongDist$ZCTA5CE20
+
+# table(substr(zipCodes_by_CongDist$ZCTA5CE20,1,2))
+
+# zipCodes_by_County %>% 
+#     filter(NAME=="King") %>% 
+#     select(ZCTA5CE20,NAME) %>% 
+#     as_tibble() %>% 
+#     select(-geometry)
+
+## some zip codes are probably in >1 district:
+# they were when I used st_intersect, but now I use st_within
+zipCodes_by_CongDist_plain %>% 
+    count(ZCTA5CE20) %>% 
+    count(n)
+
+
+## show zip codes that are in 3 districts
+zipCodes_by_CongDist_plain %>% 
+    count(ZCTA5CE20) %>% 
+    filter(n==3)
+
+## one of those zip codes is 98040 = Mercer Island
+# Mercer Island is only in dist 9 according to wikipedia (https://en.wikipedia.org/wiki/Washington%27s_9th_congressional_district)
+# I suspect it is showing up 
+zipCodes_by_CongDist_plain %>% 
+    filter(ZCTA5CE20=="98040")
+```
+
+

@@ -1,0 +1,195 @@
+---
+title: "prep geographic areas"
+author: "Janet Young"
+date: "`r Sys.Date()`"
+knit: (function(inputFile, encoding) {rmarkdown::render(inputFile,  encoding=encoding, output_dir="../reports") })
+output: github_document
+always_allow_html: true
+---
+
+Goals: 
+1. obtain geography info for various geographic regions:
+    - WA state  
+    - zip codes  
+    - legislative districts (state level) = "LD" 
+    - congressional districts (federal)
+
+2. project coordinates for each set of regions into a more suitable coordinate system for our region ("NAD83(2011) / Washington North", ID=6596).  Code seems to behave better with this system, especially when trying to use 'buffer' functions to shrink areas a little bit.
+
+```{r setup, include=FALSE}
+library(tigris) # get map data
+library(sf) # work with map data
+library(tidyverse)
+library(tmap) # for plotting maps
+
+options(tigris_use_cache = TRUE)
+
+## we'll project into this coordinate system ("NAD83(2011) / Washington North", ID=6596)
+chosenCoordReferenceSystem <- 6596
+```
+
+
+We obtain state, county, LD and congressional districts using simple tigris functions:
+```{r get regions}
+WA_state <- states(year=2020) %>% 
+    filter(NAME=="Washington")
+WA_counties <- counties(year=2020, state="WA")
+WA_stateLegDists <- state_legislative_districts(year=2020, state="WA")
+# add a short name to help plots
+WA_stateLegDists$shortName = gsub("State Senate District ","LD_",
+                                  WA_stateLegDists$NAMELSAD)
+WA_congDists <- congressional_districts(year=2020, state="WA")
+WA_congDists$shortName = gsub("Congressional District ","CD_",
+                                  WA_congDists$NAMELSAD)
+```
+
+For some reason the `state="WA"` option does not work for zip codes from the 2020 census.  So we start by getting all zip codes, and use the `st_intersects()` function to get only those that intersect with WA state.
+
+
+```{r get WA zip codes}
+
+all_zipCodes <-  zctas(year=2020) # there are 33791 in total
+
+# this has 647 rows, 10 columns just like the original all_zipCodes object, and I got no warnings
+# (google says Washington has a total of 592 active zip codes. I definitely have a few extra - I know some are zip codes in Idaho/Oregon that just touch WA but don't actually overlap. Maybe some are 'inactive' zip codes
+WA_state_zipCodes <- all_zipCodes[ st_intersects(WA_state, all_zipCodes)[[1]] ,]
+
+## using other functions instead of st_intersects:
+# st_contains gets 542 zip codes
+# st_overlaps gets 110 zip codes
+# st_touches gets 0 zip codes (either way around)
+```
+
+
+
+Now we project the coordinates to the "NAD83(2011) / Washington North" system, ID=6596 (defined at the top of this script). We use the `st_transform()` function, but I'll wrap it in a tiny function to help make sure I'm consistent if I ever decide to change the coordinate system we're projecting to.
+
+```{r project coordinates}
+projectCoords <- function(regions, use_crs = chosenCoordReferenceSystem)  {
+    projected <- st_transform(regions, crs = use_crs)
+    return(projected)
+}
+WA_state_proj <- projectCoords(WA_state)
+WA_counties_proj <- projectCoords(WA_counties)
+WA_stateLegDists_proj <- projectCoords(WA_stateLegDists)
+WA_congDists_proj <- projectCoords(WA_congDists)
+WA_state_zipCodes_proj <- projectCoords(WA_state_zipCodes)
+```
+
+
+Get a couple of example regions we might use later - King county, and LD1:
+```{r example regions}
+King_county_proj <- WA_counties_proj %>% filter(NAME=="King")
+LD1_proj <- WA_stateLegDists_proj %>% filter(shortName=="LD_1")
+```
+
+Now we 'shrink' the boundaries of each LD (or congressional district), by 1km, using the `st_buffer` function. This will give us better LD-to-zip mappings
+
+```{r shrink regions}
+WA_state_proj_shrink1km <- st_buffer(WA_state_proj, dist= -1000 )
+WA_stateLegDists_proj_shrink1km <- st_buffer(WA_stateLegDists_proj, dist= -1000 )
+WA_congDists_proj_shrink1km <- st_buffer(WA_congDists_proj, dist= -1000 )
+```
+
+
+Define a smaller region (a bounding box) to help us zoom in when we make plots.  To help figure that out, first I want to know, in the projected coordinate system, what are the outermost boundary coordinates of WA state? ("bounding box")
+```{r show WA state bbox}
+st_bbox(WA_state_proj) 
+```
+
+And what are the the outermost boundary coordinates of LD1? (we're using this as an example LD to test the code)
+```{r show LD1 bbox}
+st_bbox(LD1_proj) 
+```
+
+Use LD1 coordinates to choose an area to help me zoom in on plots to see what's going on (I followed the example code from `?st_bbox` . Looks like they do it by specifying x/y coordinates of two points at opposite corners of the box we want to define
+
+```{r set up smaller bounding box}
+exampleRegionForPlots = st_sf(id = 1:2, 
+                              geom = st_sfc(st_point(c(380000,70000)), 
+                                            st_point(c(425000,105000))) , 
+                              crs = chosenCoordReferenceSystem)
+exampleRegionForPlots_bbox <- st_bbox(exampleRegionForPlots)
+
+# show where that region is
+tm_shape(WA_state_proj) +
+    tm_borders(col = "black") +
+    tm_shape(st_as_sfc(exampleRegionForPlots_bbox)) +
+    tm_borders(col = "red") +
+    tm_layout(main.title= "WA state showing location of example region (red)")
+```
+
+Show the LDs within that example region, as well as the 'shrunken' regions (1km within the boundaries of each LD) that we'll use for LD-to-zip overlaps
+
+```{r show some LDs and the region we are using for zip code calculations}
+tm_shape(WA_state_proj, bbox=exampleRegionForPlots_bbox) +
+    tm_borders(col = "blue") +
+    
+    tm_shape(WA_stateLegDists_proj_shrink1km) +
+    #tm_borders(col="orange") +
+    tm_fill(col="orange", alpha=0.5) +
+
+    tm_shape(WA_stateLegDists_proj) +
+    tm_borders(col = "black") +
+    tm_text("shortName", size=0.5) +
+    tm_shape(st_as_sfc(exampleRegionForPlots_bbox)) +
+    tm_borders(col = "red")  +
+    
+    tm_layout(main.title= "LDs in example region\nOrange = region used for zip code overlap calculation", main.title.size=0.9)
+
+```
+
+
+
+
+```{r save R objects}
+save(WA_state,file=here("saved_R_objects/WA_state.rda"))
+
+save(WA_counties, file=here("saved_R_objects/WA_counties.rda"))
+save(WA_stateLegDists, file=here("saved_R_objects/WA_stateLegDists.rda"))
+save(WA_congDists, file=here("saved_R_objects/WA_congDists.rda"))
+save(WA_state_zipCodes, file=here("saved_R_objects/WA_state_zipCodes.rda"))
+
+save(WA_state_proj, file=here("saved_R_objects/WA_state_proj.rda"))
+save(WA_counties_proj, file=here("saved_R_objects/WA_counties_proj.rda"))
+save(WA_stateLegDists_proj, file=here("saved_R_objects/WA_stateLegDists_proj.rda"))
+save(WA_congDists_proj, file=here("saved_R_objects/WA_congDists_proj.rda"))
+save(WA_state_zipCodes_proj, file=here("saved_R_objects/WA_state_zipCodes_proj.rda"))
+
+save(WA_state_proj_shrink1km, file=here("saved_R_objects/WA_state_proj_shrink1km.rda"))
+save(WA_stateLegDists_proj_shrink1km, file=here("saved_R_objects/WA_stateLegDists_proj_shrink1km.rda"))
+save(WA_congDists_proj_shrink1km, file=here("saved_R_objects/WA_congDists_proj_shrink1km.rda"))
+
+save(exampleRegionForPlots, exampleRegionForPlots_bbox,
+     King_county_proj, LD1_proj, file=here("saved_R_objects/exampleRegions_proj.rda" ))
+
+```
+
+```{r if we ever want to load those up again we can copy-paste from here, eval=FALSE}
+##### original coordinate system:
+# load(here("saved_R_objects/WA_state.rda"))
+# load(here("saved_R_objects/WA_counties.rda"))
+# load(here("saved_R_objects/WA_stateLegDists.rda"))
+# load(here("saved_R_objects/WA_congDists.rda"))
+# load(here("saved_R_objects/WA_state_zipCodes.rda"))
+
+##### projected coords:
+# load(here("saved_R_objects/WA_state_proj.rda"))
+# load(here("saved_R_objects/WA_counties_proj.rda"))
+# load(here("saved_R_objects/WA_stateLegDists_proj.rda"))
+# load(here("saved_R_objects/WA_congDists_proj.rda"))
+# load(here("saved_R_objects/WA_state_zipCodes_proj.rda"))
+
+##### shrunken
+# load(here("saved_R_objects/WA_state_proj_shrink1km.rda"))
+# load(here("saved_R_objects/WA_stateLegDists_proj_shrink1km.rda"))
+# load(here("saved_R_objects/WA_congDists_proj_shrink1km.rda"))
+
+##### example regions
+# load(here("saved_R_objects/exampleRegions_proj.rda"))
+```
+
+
+```{r show package versions etc}
+sessionInfo()
+```

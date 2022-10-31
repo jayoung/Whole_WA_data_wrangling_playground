@@ -42,6 +42,22 @@ Intersects versus overlaps - explained [here](https://resources.arcgis.com/en/he
 
 ## Geography/mapping datasets
 
+WA state provides shape files of the districts, via this [landing site](https://www.redistricting.wa.gov/district-maps-handouts)
+
+```
+cd downloads/WA_redistricting_commission_2022_Oct30
+wget https://rdcext.blob.core.windows.net/public/1-District%20Maps/AMENDED%20FINAL%20DISTRICTS%202022_GIS-Ready.zip
+# unpack
+unzip AMENDED\ FINAL\ DISTRICTS\ 2022_GIS-Ready.zip
+rm AMENDED\ FINAL\ DISTRICTS\ 2022_GIS-Ready.zip 
+# clean up file names - get rid of spaces
+mv 2022\ Final\ Adoped\ Districts_StatePlanePCS/ 2022_Final_Adoped_Districts_StatePlanePCS/
+mv Final\ District\ Shapes\ 2022_NAD_83/ Final_District_Shapes_2022_NAD_83/
+mv Final_District_Shapes_2022_NAD_83/Final\ District\ Shapes\ 2022/ Final_District_Shapes_2022_NAD_83/Final_District_Shapes_2022/
+```
+It's in NAD_83 coordinates. I have not used them yet - for now I am using the tigris data from 2020.
+
+
 tidycensus R package also allows access to mapping data.  See [`test_geography_code.md`](test_geography_code.md)
 
 
@@ -54,4 +70,8 @@ The [Washington Geospatial Open Data Portal](https://geo.wa.gov/maps/648a84ebf32
 
 
 Or a dataset of [zip code boundaries](https://esri.maps.arcgis.com/home/item.html?id=a1569e93ecd2408d89f42e8770a90f76) from 2021 
+
+
+if I have >1 tmap plot I can show them together using:  `tmap_arrange(left_plot, right_plot)`
+
 

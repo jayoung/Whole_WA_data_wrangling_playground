@@ -1,0 +1,179 @@
+---
+title: "Playing with some R packages to look at geography"
+author: "Janet Young"
+date: "`r Sys.Date()`"
+knit: (function(inputFile, encoding) {rmarkdown::render(inputFile,  encoding=encoding, output_dir="../reports") })
+output: github_document
+always_allow_html: true
+---
+
+# Try `tidycensus` package
+
+```{r setup, include=FALSE}
+library(tidycensus)
+library(tidyverse)
+library(viridis)
+library(kableExtra)
+library(sf)
+
+# each user should obtain a Census API key from http://api.census.gov/data/key_signup.html
+# save it in a file called censusAPIkey.txt (this will NOT be synced to github)
+myKey <- scan("secure_files/censusAPIkey.txt", what="character", quiet=TRUE)
+census_api_key(myKey)
+```
+
+This package is designed to query census data. Population counts, and registered voter counts could be useful for Whole WA questions, but more usefully I think we can use it to look up boundaries for zip codes and LDs. Maybe there are more direct ways to get the map data? (xxx to do:  research `tigris` package)
+
+It's tempting to look at other census data too (e.g. age, income) but we should probably stay focussed (for now!).  
+
+Available geographic levels are listed [here](https://walker-data.com/tidycensus/articles/basic-usage.html) and include:  
+    + "state"  
+    + "county"  
+    + "zip code tabulation area"  
+    + "state legislative district (upper chamber)"  
+    + "state legislative district (lower chamber)"  
+    + "voting district"  
+
+## Tutorials, notes
+
+Tidycensus functions are listed [here](https://walker-data.com/tidycensus/reference/index.html)
+
+Basic usage is described [here](https://walker-data.com/tidycensus/articles/basic-usage.html)
+
+Usage for spatial data is described [here](https://walker-data.com/tidycensus/articles/spatial-data.html)
+
+Tidycensus has two major functions:  
+    + `get_decennial()`, which grants access to the 2000, 2010, and 2020 decennial US Census APIs  
+    + `get_acs()`, which grants access to the 1-year and 5-year American Community Survey APIs  
+    
+If we include `geometry = TRUE` in a tidycensus function call, tidycensus retrieves geographic data from the US Census Bureau  (using the `tigris` package). Spatial data gets merged with the tabular data we requested, in the `geometry` column.
+
+We can use `ggplot + geom_sf` to plot the data as maps
+
+
+## What data is available to us?
+
+Each census dataset has thousands of variables. 
+
+Here, I get the variable codes for a couple of datasets:
+```{r getting codes}
+acs5_2017_vars <- load_variables(2017, "acs5", cache = TRUE)
+sf1_2010_vars <- load_variables(2010, "sf1", cache = TRUE)
+```
+
+And show three random rows of each resulting table:
+```{r show a bit of the acs5_2017_vars table}
+acs5_2017_vars %>% 
+    slice_sample(n=3) %>% 
+    kable(caption="Example variables from 2017 acs5 dataset") %>% 
+    kable_styling(font_size = 9)
+```
+
+
+```{r show a bit of the sf1_2010_vars table}
+sf1_2010_vars %>% 
+    slice_sample(n=3) %>% 
+    kable(caption="Example variables from 2010 sf1 dataset") %>% 
+    kable_styling(font_size = 9)
+```
+
+
+## Example: median age by WA state county
+
+Get median age by WA state county
+```{r get median age by WA county, message = FALSE, warning=FALSE, echo=TRUE}
+age_WAcounties_2010 <- get_decennial(geography = "county", 
+                                     state = "WA", 
+                                     variables = "P013001", 
+                                     year = 2010,
+                                     geometry = TRUE)
+
+age_WAcounties_2010 <- age_WAcounties_2010 %>% 
+    mutate(NAME=gsub(" County, Washington","",NAME))
+```
+
+and make a graph
+
+```{r plot it}
+age_WAcounties_2010 %>%
+    ggplot(aes(x = value, y = reorder(NAME, value))) + 
+    geom_point() +
+    labs(x="Median age", y="", title = "Median age by WA state county (2010 census)")
+```
+
+now plot on a map
+
+```{r spatial plot of age by WA county}
+ggplot(age_WAcounties_2010, aes(fill = value, color = value)) +
+    geom_sf() +
+    coord_sf(crs = 26914) +
+    scale_fill_viridis(option = "magma", direction=-1) +
+    scale_color_viridis(option = "magma", direction=-1) +
+    labs(title="Median age by county, WA state (2010 census)", fill="age", color="age")
+```
+
+We can also get age by zip code. 
+
+```{r get median age by WA zip code, message = FALSE, warning=FALSE, echo=TRUE}
+age_WA_zipCodes_2010 <- get_decennial(
+    geography = "zip code tabulation area", 
+    state = "WA", 
+    #county="King County", ## doesn't seem to work. tried it a few ways
+    variables = "P013001", 
+    year = 2010,
+    geometry = TRUE)
+
+age_WA_zipCodes_2010 <- age_WA_zipCodes_2010 %>%
+    mutate(NAME=gsub(", Washington","",NAME)) %>%
+    mutate(NAME=gsub("ZCTA5 ","",NAME))
+```
+
+Show median age on a map.   The holes indicate that some zip codes are missing from the dataset (or some areas don't have zip codes?  that's hard to imagine).
+
+```{r spatial plot of age by WA zip code, message = FALSE, warning=FALSE, echo=TRUE}
+ggplot(age_WA_zipCodes_2010, aes(fill = value, color = value)) +
+    geom_sf() +
+    coord_sf(crs = 26914) +
+    scale_fill_viridis(option = "magma", direction=-1) +
+    scale_color_viridis(option = "magma", direction=-1) +
+    labs(title="Median age by zip code, WA state (2010 census)", fill="age", color="age")
+```
+
+xxx to do:  
+    + learn about ways to zoom in on these plots, show them at a different angle (explore `?coord_sf`)  "For help deciding on an appropriate coordinate reference system for your project, take a look at the [crsuggest package](https://github.com/walkerke/crsuggest."
+    + find variable code to get population data (and perhaps registered voter data)
+
+More notes on the spatial data, from [here](https://walker-data.com/tidycensus/articles/spatial-data.html):
+"data objects look much like the basic tidycensus output, but with a geometry list-column describing the geometry of each feature, using the geographic coordinate system NAD 1983 (EPSG: 4269) which is the default for Census shapefiles. tidycensus uses the Census cartographic boundary shapefiles for faster processing; if you prefer the TIGER/Line shapefiles, set cb = FALSE in the function call."
+
+## Exporting spatial data
+
+We can save data "shapefile" or "GeoJSON" files for use in external GIS or visualization applications using `st_write` (sf package). Use in ArcGIS, QGIS, Tableau, or any other application that reads shapefiles.
+```{r writing spatial data example}
+
+test_export_dir <- "test_sf_files"
+if (!dir.exists(test_export_dir)) {dir.create(test_export_dir)}
+
+age_WA_zipCodes_2010_output_file <- paste(test_export_dir, 
+                                          "age_WA_zipCodes_2010.shp",
+                                          sep="/")
+if (!file.exists(age_WA_zipCodes_2010_output_file)) {
+    st_write(age_WA_zipCodes_2010, age_WA_zipCodes_2010_output_file)
+}
+```
+
+
+
+## Health data
+
+There is some health-related data in the ACS data (e.g. how many people purchased health insurance), but digging into that seems like a distraction for now.  (In the SF1 dataset, there are no variables where 'concept' column contains 'health') 
+
+```{r health-related variables acs 5}
+acs5_2017_vars %>% 
+    filter(grepl("health",concept,ignore.case = TRUE)) %>% 
+    select(concept) %>% 
+    unique() %>% 
+    kable(caption="Health-related variables from 2017 acs5 dataset") %>% 
+    kable_styling(font_size = 9)
+```
+

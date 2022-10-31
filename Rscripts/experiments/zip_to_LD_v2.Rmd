@@ -1,0 +1,234 @@
+---
+title: "zip_to_LD_v2.Rmd"
+author: "Janet Young"
+date: "`r Sys.Date()`"
+knit: (function(inputFile, encoding) {rmarkdown::render(inputFile,  encoding=encoding, output_dir="../reports") })
+output: github_document
+always_allow_html: true
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tigris)
+library(tidyverse)
+library(kableExtra)
+library(sf) # for functions like st_join
+library(tmap) # for plotting maps
+## so we don't have to download big data multiple times
+options(tigris_use_cache = TRUE)
+
+load("zip_to_districts_Robjects/zipCodes_by_stateLD_intersect_plain.rda")
+load("zip_to_districts_Robjects/WA_state_stateLegDists.rda")
+load("zip_to_districts_Robjects/WA_state_zipCodes.rda")
+```
+
+make a map of LD1, showing all zip codes that touch it.
+
+```{r LD1 map}
+
+ld1 <- WA_state_stateLegDists %>% 
+    filter(NAMELSAD=="State Senate District 1")
+
+ld1_zips <- zipCodes_by_stateLD_intersect_plain %>% 
+    # xx leg_dist will be renamed
+    filter(leg_dist=="State Senate District 1") %>% 
+    arrange(zip_code)
+
+#xxx maybe we filter zips that aren't in WA WA_state_zipCodes
+all_zip_maps <- WA_state_zipCodes %>% 
+    filter(ZCTA5CE20 >= 98000) %>% 
+    filter(ZCTA5CE20 <= 99404)
+
+ld1_zip_maps <- all_zip_maps %>% 
+    filter(ZCTA5CE20 %in% ld1_zips$zip_code)
+```
+
+```{r}
+## shade the ld
+# thicker 
+# labels on zip codes
+# title = LD name
+
+
+tm_shape(ld1_zip_maps) +
+    tm_borders(col = "blue") +
+    tm_fill(col="ZCTA5CE20", alpha=0.5,legend.show=FALSE) +
+    tm_text("ZCTA5CE20", size=0.5) +
+    tm_shape( ld1 ) +  
+    tm_fill(col="pink", alpha=0.25) +
+    tm_borders(col = "red", lty=2, lwd=2) # +
+    #tm_format("ld1_zip_maps",title="LD1")
+    
+
+```
+
+
+test using buffer function to stop getting zips that only barely touch the LD. Try shrinking the LD by half a mile 
+```{r}
+
+
+library(crsuggest)
+
+st_crs(WA_state_stateLegDists)
+# the crs ID is 4269 / NAD83.  I think this IS one oft
+
+crsSuggest_WA_state_stateLegDists <- suggest_crs(WA_state_stateLegDists)
+
+## units of geometry are now meters
+WA_state_stateLegDists_projected <- st_transform(WA_state_stateLegDists, crs = 6596)
+
+WA_state_zipCodes_projected <- st_transform(WA_state_zipCodes, crs = 6596)
+
+
+ld1_projected <- WA_state_stateLegDists_projected %>% filter(NAMELSAD=="State Senate District 1")
+
+### lots more about coordinate systems here: https://walker-data.com/census-r/census-geographic-data-and-applications-in-r.html
+# WA_state_stateLegDists and WA_state_zipCodes both use this coordinate system: Geodetic CRS:  NAD83
+# see https://epsg.io/4269
+# looks like it is latitude/longitude based (i.e. degrees, i.e. spherical coordinates)
+# some of the geometry stuff works better in planar coordinates
+# https://walker-data.com/census-r/census-geographic-data-and-applications-in-r.html
+# When working with and visualizing geographic data for smaller areas, however, a projected coordinate reference system that represents the data in two-dimensions on a planar surface may be preferable. Thousands of projected CRSs exist - each that are appropriate for minimizing data distortion in a specific part of the world. While it can be a challenge to decide on the right projected CRS for your data, the crsuggest package (K. Walker 2021a) can help narrow down the choices
+
+
+# understand coordinate system - this suggests units are meters:
+st_crs(WA_state_stateLegDists)
+st_crs(WA_state_zipCodes)
+
+## from ?st_buffer:
+
+
+
+tm_shape(ld1) +
+    tm_borders(col = "blue") 
+```
+
+```{r try buffer on LD1}
+# dist is in meters
+## make a buffer OUTSIDE my object - this works. This gets plotted in orange
+ld1_bufferAout <- st_buffer(ld1, dist= 250)
+## it's a very jagged area (more jagged than the original LD.  Something about grid quadrants).  We can simplify (plotted in red:
+ld1_bufferAout_simp <- st_simplify(ld1_bufferAout, dTolerance = 150)
+
+## plot both of those
+tm_shape(ld1) +
+    tm_borders(col = "black") +
+    tm_shape(ld1_bufferAout) +
+    tm_borders(col="orange") +
+    tm_shape(ld1_bufferAout_simp) +
+    tm_borders(col="red", lty=3)
+```
+
+
+
+```{r try buffer on LD1 projected}
+# dist is in meters
+## make a buffer OUTSIDE my object - this works. This gets plotted in orange
+ld1p_bufferAout <- st_buffer(ld1_projected, dist= 250)
+## NOW we use the projected coordinates this is NOT jagged, I don't feel I need to simplify
+
+## plot both of those
+tm_shape(ld1_projected) +
+    tm_borders(col = "black") +
+    tm_shape(ld1p_bufferAout) +
+    tm_borders(col="orange")
+```
+
+```{r try buffer inside the same way I did buffer outside}
+# dist is in meters - try a negative number
+# didn't work before I projected (it gave me empty geometry) but try it now that I've projected coordinates it works very nicely
+
+ld1p_bufferAin <- st_buffer(ld1_projected, dist= -1000 )
+
+## plot both of those
+tm_shape(ld1_projected) +
+    tm_borders(col = "black") +
+    tm_shape(ld1p_bufferAin) +
+    tm_borders(col="orange")
+```
+
+```{r now with the buffered LD1 see what zip codes we get}
+
+ld1_zips_useBuffer <- st_join(WA_state_zipCodes_projected,
+                              ld1p_bufferAin,
+                              join = st_intersects,
+                              left=FALSE)
+ld1_zips_useBuffer_plain <- ld1_zips_useBuffer %>%
+    select(ZCTA5CE20,NAMELSAD) %>%
+    as_tibble() %>%
+    select(-geometry) %>%
+    arrange(ZCTA5CE20) %>%
+    rename(leg_dist=NAMELSAD) %>%
+    rename(zip_code=ZCTA5CE20)
+
+Kelsey_LD1 <- c("98011", "98012", "98021", "98034", "98036", "98043", "98072", "98077", "98296")
+
+temp <- ld1_zips_useBuffer_plain %>% 
+    mutate(inKelseyList = zip_code %in% Kelsey_LD1) 
+
+temp %>% 
+    kable() %>% 
+    kable_styling(font_size = 12)
+
+# all 9 of Kelsey's are in my table
+table(Kelsey_LD1 %in% ld1_zips_useBuffer_plain$zip_code)
+
+# 98208 - should it be in LD1?  it's in my table not Kelseys
+
+```
+
+
+
+plot 98208 and any districts it might overlap with
+
+```{r another plot}
+# zipCodes_by_stateLD_intersect_plain %>% filter(zip_code=="98208")
+# shows me it might overlap 1, 21, 38, 44
+tm_shape((WA_state_stateLegDists_projected %>% 
+              filter(SLDUST %in% c("001","021","038","044") ))) +
+    tm_borders(col = "blue") +
+    tm_text("SLDUST", col = "blue") +
+    
+    tm_shape( (WA_state_zipCodes_projected %>% filter(ZCTA5CE20=="98208")) ) +  
+    tm_borders(col = "red") +
+    tm_text("ZCTA5CE20", col = "red")  +
+    tm_shape(ld1p_bufferAin) +
+    tm_borders(col="orange")
+    
+```
+
+```{r}
+# +
+#     tm_fill(col="ZCTA5CE20", alpha=0.5,legend.show=FALSE) +
+#     tm_text("ZCTA5CE20", size=0.5) +
+#     tm_shape( ld1 ) +  
+#     tm_fill(col="pink", alpha=0.25) +
+# 
+
+## figure out whether we can do buffers with negative width (inside the object)
+
+# 
+# # took 1.9s
+# system.time(ld1_zips_useBuffer <- st_join(WA_state_zipCodes, 
+#                                                             ld1, 
+#                                                             join = st_intersects, 
+#                                                             left=FALSE))
+# 
+# 
+# # turn that into a tibble
+# zipCodes_by_stateLD_intersect_plain <- zipCodes_by_stateLD_intersect %>%
+#     select(ZCTA5CE20,NAMELSAD) %>%
+#     as_tibble() %>%
+#     select(-geometry) %>% 
+#     arrange(NAMELSAD) %>% 
+#     rename(leg_dist=NAMELSAD) %>% 
+#     rename(zip_code=ZCTA5CE20)
+# 
+
+
+
+```
+
