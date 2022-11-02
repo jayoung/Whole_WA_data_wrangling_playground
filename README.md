@@ -39,6 +39,13 @@ in some version2 maps the old LD goes off the edge of the plot. Could set boundi
 would be nice to have a scale on those maps
 
 
+# WA state regions browsable by ARCgis viewer
+
+[2021 redistricting maps](https://leg-tech.maps.arcgis.com/apps/webappviewer/index.html?id=3413cce928744f6a86bd631d97e2a06a)
+
+[first set of maps we were using](https://www.arcgis.com/apps/mapviewer/index.html?layers=648a84ebf320484e9d73717f76d1d042) uses old boundaries
+
+
 # other notes on how to code stuff
 
 git tip: I was having trouble with `git push` hanging before completion, after I added the pdf plot outputs to the repo. Simple solution, described [here](https://stackoverflow.com/questions/15843937/git-push-hangs-after-total-line/68711337#68711337):
