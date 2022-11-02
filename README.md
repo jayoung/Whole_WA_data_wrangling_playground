@@ -36,6 +36,18 @@ Run `Rscripts/zip_to_LD_use_2022_redistricted_boundaries.Rmd` - this creates the
 
 # other notes on how to code stuff
 
+git tip: I was having trouble with `git push` hanging before completion, after I added the pdf plot outputs to the repo. Simple solution, described [here](https://stackoverflow.com/questions/15843937/git-push-hangs-after-total-line/68711337#68711337):
+```
+cd /Users/jayoung/Documents/WholeWashington/Whole_WA_data_wrangling_playground
+git config --get http.postBuffer
+    # nothing - it is not set
+git config --local http.postBuffer 157286400
+git config --get http.postBuffer
+    # shows I did set it 157286400
+
+```
+and start the push again.  Something to do with max upload chunk size and having files that exceed that.
+
 ## Geography/mapping tools
 
 the tidycensus R package looks useful.  See [`test_geography_code.md`](test_geography_code.md)
