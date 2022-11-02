@@ -24,8 +24,8 @@ library(tmap) # for plotting maps
 
 options(tigris_use_cache = TRUE)
 
-## we'll project into this coordinate system ("NAD83(2011) / Washington North", ID=6596)
-chosenCoordReferenceSystem <- 6596
+### functions and constants we'll use in >1 script are loaded from here (inluding definition of chosenCoordReferenceSystem)
+source(here("Rscripts/shared_functions.R"))
 ```
 
 
@@ -65,10 +65,6 @@ WA_state_zipCodes <- all_zipCodes[ st_intersects(WA_state, all_zipCodes)[[1]] ,]
 Now we project the coordinates to the "NAD83(2011) / Washington North" system, ID=6596 (defined at the top of this script). We use the `st_transform()` function, but I'll wrap it in a tiny function to help make sure I'm consistent if I ever decide to change the coordinate system we're projecting to.
 
 ```{r project coordinates}
-projectCoords <- function(regions, use_crs = chosenCoordReferenceSystem)  {
-    projected <- st_transform(regions, crs = use_crs)
-    return(projected)
-}
 WA_state_proj <- projectCoords(WA_state)
 WA_counties_proj <- projectCoords(WA_counties)
 WA_stateLegDists_proj <- projectCoords(WA_stateLegDists)
@@ -189,6 +185,7 @@ save(exampleRegionForPlots, exampleRegionForPlots_bbox,
 # load(here("saved_R_objects/exampleRegions_proj.rda"))
 ```
 
+Show R version and package versions, in case of troubleshooting
 
 ```{r show package versions etc}
 sessionInfo()

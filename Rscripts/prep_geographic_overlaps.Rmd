@@ -22,8 +22,8 @@ library(here) # helps manage file paths when working in an R project
 
 options(tigris_use_cache = TRUE)
 
-## we'll project into this coordinate system ("NAD83(2011) / Washington North", ID=6596)
-chosenCoordReferenceSystem <- 6596
+### functions and constants we'll use in >1 script are loaded from here (inluding definition of chosenCoordReferenceSystem)
+source(here("Rscripts/shared_functions.R"))
 
 load(here("saved_R_objects/WA_state_zipCodes_proj.rda"))
 load(here("saved_R_objects/WA_state_proj_shrink1km.rda"))
@@ -193,56 +193,22 @@ rbind(numZipsPerLD, numZipsPerCD) %>%
     kable_styling(font_size = 12)
 ```
 
-Now export the LD to zip tibble in a similar format to Kelsey's google sheet.  Can't just `pivot_wider()`, because some zips are present more than once and the columns have different lengths.  (or maybe we could if we messed around a bit)   I just used data.frame and a for loop instead.
+Now export the LD to zip tibble in a similar format to Kelsey's google sheet.  Can't just `pivot_wider()`, because some zips are present more than once and the columns have different lengths.  (or maybe we could if we messed around a bit)   I made a function called `makeWideTable()` (see `Rscripts/shared_functions.R`) that uses data.frame and a for loop instead.
 
-
-
-
-```{r}
-
-makeWideTable <- function(zipToDist_tbl, maxZips=0, 
-                          missingZips=NULL, saveToFile=NULL) {
-    x <- data.frame(row.names=1:maxZips)
-    if(!is.null(missingZips)) {
-        x[,"no_district_assigned"] <- NA
-        x[1:length(missingZips),"no_district_assigned"] <- missingZips
-    }
-    distNames <- zipToDist_tbl %>% 
-        select(dist) %>% 
-        mutate(numeric_dist=as.integer(gsub("LD_|CD_","",dist))) %>% 
-        arrange(numeric_dist) %>% 
-        select(-numeric_dist) %>% 
-        unique() %>% 
-        unlist(use.names = FALSE) 
-    for (thisDist in distNames) {
-        theseZips <- zipToDist_tbl %>% 
-            filter(dist==thisDist) %>% 
-            select(zip_code) %>% 
-            arrange(zip_code) %>% 
-            unlist(use.names = FALSE)
-        
-        x[,thisDist] <- NA
-        x[1:length(theseZips),thisDist] <- theseZips
-    }
-    if(!is.null(saveToFile)) {
-        write.table(x, file=saveToFile, na="", quote=FALSE, sep="\t", row.names = FALSE)
-    }
-    return(x)  
-}
-
+```{r export zip to district csv files}
 ### get LD zip table
 LDzip_wide <- zip_LDshrink1km_intersects_proj_plain %>% 
     rename(dist=leg_dist_short) %>% 
     makeWideTable(maxZips=numZipsPerLD["max_zips_per_LD",1], 
                   missingZips=zips_without_LDs,
-                  saveToFile=here("output_to_share/LD_zip_codes_uncurated_v1_2022_Oct30.tsv"))
+                  saveToFile=here("output_to_share/version1_2022_Oct30/LD_zip_codes_uncurated_v1_2022_Oct30.tsv"))
 
 ### get CD zip table
 CDzip_wide <- zip_CDshrink1km_intersects_proj_plain %>% 
     rename(dist=cong_dist_short) %>% 
     makeWideTable(maxZips=numZipsPerCD["max_zips_per_CD",1], 
                   missingZips=zips_without_CDs,
-                  saveToFile=here("output_to_share/CD_zip_codes_uncurated_v1_2022_Oct30.tsv"))
+                  saveToFile=here("output_to_share/version1_2022_Oct30/CD_zip_codes_uncurated_v1_2022_Oct30.tsv"))
 ```
 
 
@@ -286,11 +252,11 @@ plotDistrictAndZipCodes <- function(allZipMaps=WA_state_zipCodes_proj,
 # p <- plotDistrictAndZipCodes(allZipMaps=WA_state_zipCodes_proj,
 #                         zip_LDshrink1km_intersects_proj_plain,
 #                         district_short_name="LD_1",
-#                         savePlot = here("output_to_share/LD_zip_codes_uncurated_v1_2022_Oct30_plots/LD_1_uncurated_v1_2022_Oct30_plot.pdf")
+#                         savePlot = here("output_to_share/version1_2022_Oct30/LD_zip_codes_uncurated_v1_2022_Oct30_plots/LD_1_uncurated_v1_2022_Oct30_plot.pdf")
 #                         )
 
 #### plots for all LDs
-plotOutDir <- "output_to_share/LD_zip_codes_uncurated_v1_2022_Oct30_plots"
+plotOutDir <- "output_to_share/version1_2022_Oct30/LD_zip_codes_uncurated_v1_2022_Oct30_plots"
 allPlots <- list()
 for(thisLD in unique(zip_LDshrink1km_intersects_proj_plain$leg_dist_short)) {
     #cat("making plot for LD",thisLD,"\n")
@@ -307,6 +273,8 @@ for(thisLD in unique(zip_LDshrink1km_intersects_proj_plain$leg_dist_short)) {
 ## show one plot
 allPlots[["LD_1"]]
 ```
+
+Show R version and package versions, in case of troubleshooting
 
 ```{r show package versions etc}
 sessionInfo()

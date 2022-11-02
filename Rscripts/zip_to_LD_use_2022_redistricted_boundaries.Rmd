@@ -1,0 +1,329 @@
+---
+title: "zip_to_LD_use_2022_redistricted_boundaries"
+author: "Janet Young"
+date: "`r Sys.Date()`"
+knit: (function(inputFile, encoding) {rmarkdown::render(inputFile,  encoding=encoding, output_dir="../reports") })
+output: github_document
+always_allow_html: true
+---
+
+
+
+Goals:   
+
+1. read geography info for REDISTRICTED legislative and congressional districts into R
+
+2. project coordinates for each set of regions into a more suitable coordinate system for our region ("NAD83(2011) / Washington North", ID=6596).  Code seems to behave better with this system, especially when trying to use 'buffer' functions to shrink areas a little bit.
+
+3. get zip code overlaps, save as R objects
+
+4. make plots and csv file as before
+
+```{r setup, include=FALSE}
+library(tigris) # get map data
+library(sf) # work with map data
+library(tidyverse)
+library(tmap) # for plotting maps
+library(kableExtra) # for displaying tables
+library(here) # to help with file paths when using an Rproject
+
+### functions and constants we'll use in >1 script are loaded from here (inluding definition of chosenCoordReferenceSystem):
+source(here("Rscripts/shared_functions.R"))
+
+load(here("saved_R_objects/WA_state_proj.rda"))
+load(here("saved_R_objects/WA_state_zipCodes_proj.rda"))
+load(here("saved_R_objects/zip_WAstate_shrink1km_intersects_proj_plain.rda"))
+
+options(tigris_use_cache = TRUE)
+
+## we'll project into this coordinate system ("NAD83(2011) / Washington North", ID=6596)
+chosenCoordReferenceSystem <- 6596
+
+```
+
+Tell R where to find the WA state redistricting shape files
+```{r file paths}
+redist_data_dirs <- here("downloads/WA_redistricting_commission_2022_Oct30/Final_District_Shapes_2022_NAD_83/Final_District_Shapes_2022")
+redist_data_dirs <- list.files(redist_data_dirs, full.names = TRUE)
+redist_data_shpFiles <- list.files(redist_data_dirs, pattern=".shp$", full.names = TRUE)
+
+names(redist_data_shpFiles) <-  tolower(sapply(strsplit(redist_data_dirs, "/"), function(x) {
+    x[length(x)]
+}))
+
+```
+
+Read them in
+```{r read shp files}
+CDs_redist <- st_read(redist_data_shpFiles["congessional"])
+LDs_redist <- st_read(redist_data_shpFiles["legislative"])
+
+# add a nicer name for plots
+# I checked - the ID, DISTRICT and DISTRICTN columns of CDs_redist (and of LDs_redist) are identical to each other
+CDs_redist$districtName <- paste("CD_", CDs_redist$ID, sep="")
+LDs_redist$districtName <- paste("LD_", LDs_redist$ID, sep="")
+```
+
+Project coordinates to our chosen reference system, better for WA state
+```{r project coords}
+CDs_redist_proj <- projectCoords(CDs_redist)
+LDs_redist_proj <- projectCoords(LDs_redist)
+```
+
+
+Now we 'shrink' the boundaries of each LD (or congressional district), by 1km, using the `st_buffer` function. This will give us better LD-to-zip mappings
+
+```{r shrink regions}
+CDs_redist_proj_shrink1km <- st_buffer(CDs_redist_proj, dist= -1000 )
+LDs_redist_proj_shrink1km <- st_buffer(LDs_redist_proj, dist= -1000 )
+```
+
+Figure out the overlaps between zip codes and LDs. We keep the `sf` style object with the geographic information, but we also make a plain tibble.
+```{r get LD to zip code mapping}
+zip_LDredist_shrink1km_intersects_proj <- st_join(WA_state_zipCodes_proj, 
+                                           LDs_redist_proj_shrink1km, 
+                                           join = st_intersects, 
+                                           left=FALSE)
+zip_LDredist_shrink1km_intersects_proj_plain <- zip_LDredist_shrink1km_intersects_proj %>%
+    select(ZCTA5CE20,districtName) %>%
+    as_tibble() %>%
+    select(-geometry) %>% 
+    arrange(ZCTA5CE20) %>% 
+    arrange(districtName) %>% 
+    rename(zip_code=ZCTA5CE20) 
+```
+
+Do the same for congressional districts - get the overlaps between zip codes and CDs.
+```{r get CD to zip code mapping}
+zip_CDredist_shrink1km_intersects_proj <- st_join(WA_state_zipCodes_proj, 
+                                           CDs_redist_proj_shrink1km, 
+                                           join = st_intersects, 
+                                           left=FALSE)
+zip_CDredist_shrink1km_intersects_proj_plain <- zip_CDredist_shrink1km_intersects_proj %>%
+    select(ZCTA5CE20,districtName) %>%
+    as_tibble() %>%
+    select(-geometry) %>% 
+    arrange(ZCTA5CE20) %>% 
+    arrange(districtName) %>% 
+    rename(zip_code=ZCTA5CE20) 
+```
+
+
+
+
+How many redistricted LDs is each zip code in? boundaries don't line up, so some are in >1.  
+
+```{r count num LDs per zip code}
+zip_LDredist_shrink1km_intersects_proj_plain %>% 
+    mutate(zip_code2=factor(zip_code, 
+                           levels=zip_WAstate_shrink1km_intersects_proj_plain$zip_code)) %>% 
+    count(zip_code2, .drop=FALSE) %>% 
+    rename(num_LDs_per_zip=n) %>% 
+    count(num_LDs_per_zip) %>% 
+    rename(num_zip_codes=n) %>% 
+    kable() %>% 
+    kable_styling(font_size = 12)
+```
+
+Wow - one zip code is now in four LDs. It's 99301. It includes Pasco - take a quick look at which LDs it oerlaps:
+
+```{r get the zip code in 4 LDs}
+zipCodeWith4LDs <- zip_LDredist_shrink1km_intersects_proj_plain %>% 
+    count(zip_code, .drop=FALSE) %>% 
+    rename(num_LDs_per_zip=n) %>% 
+    filter(num_LDs_per_zip==4) %>% 
+    select(zip_code) %>% 
+    unlist(use.names = FALSE)
+zip_LDredist_shrink1km_intersects_proj_plain %>% 
+    filter(zip_code == zipCodeWith4LDs) %>% 
+    kable() %>% 
+    kable_styling()
+```
+
+
+
+What are the zips that were not assigned to LDs? They might be so small they got missed because of the 1km shrinkage of the LD boundaries
+```{r show zips without LDs}
+zips_without_LDs <- setdiff(zip_WAstate_shrink1km_intersects_proj_plain$zip_code,  
+                            zip_LDredist_shrink1km_intersects_proj_plain$zip_code)
+zips_without_LDs
+## I checked - there are no zips from outside WA state assigned to LDs 
+# setdiff( zip_LDshrink1km_intersects_proj_plain$zip_code, zip_WAstate_shrink1km_intersects_proj_plain$zip_code)
+```
+
+
+How many CDs is each zip code in? boundaries don't line up, so some are in >1.  
+
+```{r count num CDs per zip code}
+zip_CDredist_shrink1km_intersects_proj_plain %>% 
+    mutate(zip_code2=factor(zip_code, 
+                           levels=zip_WAstate_shrink1km_intersects_proj_plain$zip_code)) %>% 
+    count(zip_code2, .drop=FALSE) %>% 
+    rename(num_CDs_per_zip=n) %>% 
+    count(num_CDs_per_zip) %>% 
+    rename(num_zip_codes=n) %>% 
+    kable() %>% 
+    kable_styling(font_size = 12)
+```
+
+What are the zips that were not assigned to CDs? 
+```{r show zips without CDs}
+zips_without_CDs <- setdiff(zip_WAstate_shrink1km_intersects_proj_plain$zip_code,  
+                            zip_CDredist_shrink1km_intersects_proj_plain$zip_code)
+zips_without_CDs
+## I checked - there are no zips from outside WA state assigned to CDs 
+## setdiff( zip_CDshrink1km_intersects_proj_plain$zip_code, zip_WAstate_shrink1km_intersects_proj_plain$zip_code)
+```
+
+
+
+Look at the range of number of zip codes per LD / CD
+```{r count num districts per zip code}
+numZipsPerLD <- zip_LDredist_shrink1km_intersects_proj_plain %>% 
+    count(districtName) %>% 
+    rename(num_zips_per_LD=n) %>% 
+    summarize(min_zips_per_LD=min(num_zips_per_LD),
+              max_zips_per_LD=max(num_zips_per_LD)) %>% 
+    t()
+
+numZipsPerCD <- zip_CDredist_shrink1km_intersects_proj_plain %>% 
+    count(districtName) %>% 
+    rename(num_zips_per_CD=n) %>% 
+    summarize(min_zips_per_CD=min(num_zips_per_CD),
+              max_zips_per_CD=max(num_zips_per_CD)) %>% 
+    t() 
+
+rbind(numZipsPerLD, numZipsPerCD) %>% 
+    kable() %>% 
+    kable_styling(font_size = 12)
+```
+
+
+
+Now export the LD to zip tibble in a similar format to Kelsey's google sheet.  Can't just `pivot_wider()`, because some zips are present more than once and the columns have different lengths.  (or maybe we could if we messed around a bit)   I made a function called `makeWideTable()` (see `Rscripts/shared_functions.R`) that uses data.frame and a for loop instead.
+
+```{r export zip to district csv files}
+### get LD zip table
+LDzip_wide <- zip_LDredist_shrink1km_intersects_proj_plain %>% 
+    rename(dist=districtName) %>% 
+    makeWideTable(maxZips=numZipsPerLD["max_zips_per_LD",1], 
+                  missingZips=zips_without_LDs,
+                  saveToFile=here("output_to_share/version2_2022_Nov_redistricting2022/LDredist2022_zip_codes_uncurated_v2_2022_Nov1.tsv"))
+
+### get CD zip table
+CDzip_wide <- zip_CDredist_shrink1km_intersects_proj_plain %>% 
+    rename(dist=districtName) %>% 
+    makeWideTable(maxZips=numZipsPerCD["max_zips_per_CD",1], 
+                  missingZips=zips_without_CDs,
+                  saveToFile=here("output_to_share/version2_2022_Nov_redistricting2022/CDredist2022_zip_codes_uncurated_v2_2022_Nov1.tsv"))
+```
+
+
+now make a plot for each LD, showing the zip codes we assigned to it.
+
+(will be able to modify this function to work on CDs too - need to fix some column names first)
+```{r}
+
+plotDistrictAndZipCodes_redist <- function(
+        allZipMaps=WA_state_zipCodes_proj,
+        allDistrictMaps=LDs_redist_proj,
+        oldDistrictMaps=WA_stateLegDists_proj,
+        zipToDistrictTbl=NULL,
+        district_short_name,
+        savePlot=NULL) {
+    
+    zips_to_plot <- zipToDistrictTbl %>% 
+        filter(districtName==district_short_name) %>% 
+        select(zip_code) %>% 
+        unlist(use.names = FALSE)
+    myTitle <- paste(district_short_name, "(2022 in red, pre-2022 in blue)\nand assigned zip codes (uncurated)")
+    
+    p <- tm_shape(allZipMaps %>% filter(ZCTA5CE20 %in% zips_to_plot)) +
+        tm_borders(col = "gray") +
+        tm_fill(col="ZCTA5CE20", alpha=0.5,legend.show=FALSE) +
+        tm_text("ZCTA5CE20", size=0.5) +
+        
+        ## pre-redistricting LD is in blue, no shading
+        tm_shape( oldDistrictMaps %>% filter(shortName==district_short_name) ) +  
+        tm_borders(col = "cornflowerblue", lty=2, lwd=2)  +
+
+        ## 2022 redistricted LD is in red, with shading
+        tm_shape( allDistrictMaps %>% filter(districtName==district_short_name) ) +  
+        tm_fill(col="pink", alpha=0.25) +
+        tm_borders(col = "red", lty=2, lwd=2)  +
+        
+        tm_layout(main.title=myTitle, 
+                  main.title.size = 0.9)
+    if(!is.null(savePlot)) {
+        # we don't overwrite
+        if(!file.exists(savePlot)) {
+            tmap_options(show.messages=FALSE)
+            tmap_save(p, filename=savePlot)
+            tmap_options_reset()
+        }
+    }
+    return(p)
+}
+
+### load the pre-redistricting maps.  I won't do this at the top of the script, jsut to make absolutely sure that all the above analysis uses the new districts
+load(here("saved_R_objects/WA_stateLegDists_proj.rda"))
+load(here("saved_R_objects/WA_congDists_proj.rda"))
+# 
+# ## plot for a single LD to test the function
+# p <- plotDistrictAndZipCodes_redist(allZipMaps=WA_state_zipCodes_proj,
+#         allDistrictMaps=LDs_redist_proj,
+#         oldDistrictMaps=WA_stateLegDists_proj,
+#         zip_LDredist_shrink1km_intersects_proj_plain,
+#         district_short_name="LD_1",
+#         savePlot = here("./test.pdf")
+# )
+# p
+
+
+tmap_options(max.categories = as.integer(numZipsPerLD["max_zips_per_LD",1]))
+
+#### plots for all LDs
+plotOutDir <- "output_to_share/version2_2022_Nov_redistricting2022/LDredist_zip_codes_uncurated_v2_2022_Nov1_plots"
+allPlots <- list()
+for(thisLD in unique(zip_LDredist_shrink1km_intersects_proj_plain$districtName)) {
+    #cat("making plot for LD",thisLD,"\n")
+    pdfFile <- paste(plotOutDir, "/", thisLD, "_redist_uncurated_v2_2022_Nov1_plot.pdf",sep="" )
+    pdfFile <- here(pdfFile)
+    
+    allPlots[[thisLD]] <- plotDistrictAndZipCodes_redist(allZipMaps=WA_state_zipCodes_proj,
+                        allDistrictMaps=LDs_redist_proj,
+                        oldDistrictMaps=WA_stateLegDists_proj,
+                        zipToDistrictTbl=zip_LDredist_shrink1km_intersects_proj_plain,
+                        district_short_name=thisLD,
+                        savePlot=pdfFile
+                        )
+}
+
+## show one plot
+allPlots[["LD_1"]]
+```
+
+
+```{r save R objects}
+# not really needed - it's very quick to read in the shp files
+save(LDs_redist,file=here("saved_R_objects/LDs_redist.rda"))
+save(CDs_redist,file=here("saved_R_objects/CDs_redist.rda"))
+save(LDs_redist_proj,file=here("saved_R_objects/LDs_redist_proj.rda"))
+save(CDs_redist_proj,file=here("saved_R_objects/CDs_redist_proj.rda"))
+
+save(LDs_redist_proj_shrink1km,file=here("saved_R_objects/LDs_redist_proj_shrink1km.rda"))
+save(CDs_redist_proj_shrink1km,file=here("saved_R_objects/CDs_redist_proj_shrink1km.rda"))
+
+save(zip_CDredist_shrink1km_intersects_proj,file=here("saved_R_objects/zip_CDredist_shrink1km_intersects_proj.rda"))
+save(zip_CDredist_shrink1km_intersects_proj_plain,file=here("saved_R_objects/zip_CDredist_shrink1km_intersects_proj_plain.rda"))
+
+save(zip_LDredist_shrink1km_intersects_proj,file=here("saved_R_objects/zip_LDredist_shrink1km_intersects_proj.rda"))
+save(zip_LDredist_shrink1km_intersects_proj_plain,file=here("saved_R_objects/zip_LDredist_shrink1km_intersects_proj_plain.rda"))
+```
+
+
+Show R version and package versions, in case of troubleshooting
+
+```{r show package versions etc}
+sessionInfo()
+```

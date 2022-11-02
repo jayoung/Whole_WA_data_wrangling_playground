@@ -5,8 +5,36 @@ Goal:  playground to test code to look at Whole WA data
 The git repo lives [here](https://github.com/jayoung/Whole_WA_data_wrangling) 
 
 Who's playing? Everyone is welcome.
-- Janet Young. I started this repo. My expertise is mostly in R, so there's a bias towards R code. (I'm a beginner at using git for team projects - might need advice on handling pull requests, etc, use of different branches, etc)
+- Janet Young (@jayoung). I started this repo. My expertise is mostly in R, so there's a bias towards R code. (I'm a beginner at using git for team projects - might need advice on handling pull requests, etc, use of different branches, etc)  
+- @Frijol (maybe?)
 
+## repository organization
+
+Scripts live in the `Rscripts` directory.
+
+Some scripts are R markdown notebooks (`\*Rmd` files).  We can run Rmd scripts via the 'knit' function (e.g. the knit button in Rstudio).  I've set those notebooks so that their output appears in the `reports` directory (`\*md` files).
+
+
+
+## version 1, zip code to LD mapping
+
+All info comes from R's `tigris` package - uses 2020 census data.
+
+step 1. Run `Rscripts/prep_geographic_areas.Rmd` - this gets maps of the geographic areas we care about, saves them as Rdata files.
+
+step 2. Run `Rscripts/prep_geographic_overlaps.Rmd` - this figures out how zip codes overlap with LDs, writes a csv file that Kelsey can plug into her google sheet, and plots a map for each LD showing which zip codes we assigned to it.  Report includes some stats about how many LDs each zip code overlaps with. Output goes in output_to_share, file names contain `v1_2022_Oct30`.  Output also synced to git and uploaded to google drive.
+
+## version 2, zip code to LD mapping
+
+Now I use the LD boundaries after redistricting, downloaded from [WA state redistricting commission](https://www.redistricting.wa.gov/district-maps-handouts)
+
+Still need to have run `Rscripts/prep_geographic_areas.Rmd` (for the version 1 analysis) to save zip codes (and old LD boundaries)
+
+Run `Rscripts/zip_to_LD_use_2022_redistricted_boundaries.Rmd` - this creates the NEW table and maps using the 2022 redistricted boundaries
+
+
+
+# other notes on how to code stuff
 
 ## Geography/mapping tools
 
@@ -57,6 +85,19 @@ mv Final_District_Shapes_2022_NAD_83/Final\ District\ Shapes\ 2022/ Final_Distri
 ```
 It's in NAD_83 coordinates. I have not used them yet - for now I am using the tigris data from 2020.
 
+Also get the pdf files. They don't display well on my mac (missing font)
+```
+cd /Users/jayoung/Documents/WholeWashington/Whole_WA_data_wrangling_playground/downloads/WA_redistricting_commission_2022_Oct30/pdf_files
+
+wget https://rdcext.blob.core.windows.net/public/2-Individual%20Districts/2022%20Legislative%20District%20Maps/Reduced%20LD%20PDFs/2022%20Adopted%20Legislative%20Map%20Full.pdf
+wget https://rdcext.blob.core.windows.net/public/2-Individual%20Districts/2022%20Legislative%20District%20Maps/Reduced%20LD%20PDFs/2022%20Adopted%20Legislative%20Map%20Inset%201.pdf
+wget https://rdcext.blob.core.windows.net/public/2-Individual%20Districts/2022%20Legislative%20District%20Maps/Reduced%20LD%20PDFs/2022%20Adopted%20Legislative%20Map%20Inset%202.pdf
+
+wget https://rdcext.blob.core.windows.net/public/2-Individual%20Districts/2022%20Congessional%20District%20Maps/Reduced%20CD%20PDFs/2022%20Adopted%20Congressional%20Map%20Full.pdf
+wget https://rdcext.blob.core.windows.net/public/2-Individual%20Districts/2022%20Congessional%20District%20Maps/Reduced%20CD%20PDFs/2022%20Adopted%20Congressional%20Map%20Inset%201.pdf
+wget https://rdcext.blob.core.windows.net/public/2-Individual%20Districts/2022%20Congessional%20District%20Maps/Reduced%20CD%20PDFs/2022%20Adopted%20Congressional%20Map%20Inset%202.pdf
+```
+# other data sources
 
 tidycensus R package also allows access to mapping data.  See [`test_geography_code.md`](test_geography_code.md)
 
