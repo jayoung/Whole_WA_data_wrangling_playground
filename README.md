@@ -32,6 +32,11 @@ Still need to have run `Rscripts/prep_geographic_areas.Rmd` (for the version 1 a
 
 Run `Rscripts/zip_to_LD_use_2022_redistricted_boundaries.Rmd` - this creates the NEW table and maps using the 2022 redistricted boundaries
 
+## possible improvements
+
+in some version2 maps the old LD goes off the edge of the plot. Could set bounding box to the union of all the things we're going to plot. 
+
+would be nice to have a scale on those maps
 
 
 # other notes on how to code stuff
