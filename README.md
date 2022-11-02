@@ -34,9 +34,7 @@ Run `Rscripts/zip_to_LD_use_2022_redistricted_boundaries.Rmd` - this creates the
 
 ## possible improvements
 
-in some version2 maps the old LD goes off the edge of the plot. Could set bounding box to the union of all the things we're going to plot. 
-
-would be nice to have a scale on those maps
+would be nice to have a scale bar on those maps (e.g. 1km)
 
 
 # WA state regions browsable by ARCgis viewer

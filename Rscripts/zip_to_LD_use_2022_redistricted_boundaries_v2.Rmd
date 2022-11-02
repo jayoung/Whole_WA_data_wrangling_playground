@@ -205,14 +205,14 @@ LDzip_wide <- zip_LDredist_shrink1km_intersects_proj_plain %>%
     rename(dist=districtName) %>% 
     makeWideTable(maxZips=numZipsPerLD["max_zips_per_LD",1], 
                   missingZips=zips_without_LDs,
-                  saveToFile=here("output_to_share/version2_2022_Nov_redistricting2022/LDredist2022_zip_codes_uncurated_v2_2022_Nov1.tsv"))
+                  saveToFile=here("output_to_share/version3_2022_Nov_redistricting2022_prettier/LDredist2022_zip_codes_uncurated_v3_2022_Nov2.tsv"))
 
 ### get CD zip table
 CDzip_wide <- zip_CDredist_shrink1km_intersects_proj_plain %>% 
     rename(dist=districtName) %>% 
     makeWideTable(maxZips=numZipsPerCD["max_zips_per_CD",1], 
                   missingZips=zips_without_CDs,
-                  saveToFile=here("output_to_share/version2_2022_Nov_redistricting2022/CDredist2022_zip_codes_uncurated_v2_2022_Nov1.tsv"))
+                  saveToFile=here("output_to_share/version3_2022_Nov_redistricting2022_prettier/CDredist2022_zip_codes_uncurated_v3_2022_Nov2.tsv"))
 ```
 
 
@@ -235,17 +235,24 @@ plotDistrictAndZipCodes_redist <- function(
         unlist(use.names = FALSE)
     myTitle <- paste(district_short_name, "(2022 in red, pre-2022 in blue)\nand assigned zip codes (uncurated)")
     
-    p <- tm_shape(allZipMaps %>% filter(ZCTA5CE20 %in% zips_to_plot)) +
+    
+    zipMapsThisDistrict <- allZipMaps %>% filter(ZCTA5CE20 %in% zips_to_plot)
+    thisDistrictMap <- allDistrictMaps %>% filter(districtName==district_short_name)
+    thisDistrictMapOld <- oldDistrictMaps %>% filter(shortName==district_short_name)
+     
+    wholeRegionToPlot <- st_union(st_union(zipMapsThisDistrict),st_union(thisDistrictMap)  )
+    wholeRegionToPlot <- st_union(wholeRegionToPlot,st_union(thisDistrictMapOld) ) 
+    p <- tm_shape(zipMapsThisDistrict, bbox=st_bbox(wholeRegionToPlot)) +
         tm_borders(col = "gray") +
         tm_fill(col="ZCTA5CE20", alpha=0.5,legend.show=FALSE) +
         tm_text("ZCTA5CE20", size=0.5) +
         
         ## pre-redistricting LD is in blue, no shading
-        tm_shape( oldDistrictMaps %>% filter(shortName==district_short_name) ) +  
+        tm_shape( thisDistrictMapOld ) +  
         tm_borders(col = "cornflowerblue", lty=2, lwd=2)  +
 
         ## 2022 redistricted LD is in red, with shading
-        tm_shape( allDistrictMaps %>% filter(districtName==district_short_name) ) +  
+        tm_shape( thisDistrictMap ) +  
         tm_fill(col="pink", alpha=0.25) +
         tm_borders(col = "red", lty=2, lwd=2)  +
         
@@ -265,26 +272,26 @@ plotDistrictAndZipCodes_redist <- function(
 ### load the pre-redistricting maps.  I won't do this at the top of the script, jsut to make absolutely sure that all the above analysis uses the new districts
 load(here("saved_R_objects/WA_stateLegDists_proj.rda"))
 load(here("saved_R_objects/WA_congDists_proj.rda"))
+
+tmap_options(max.categories = as.integer(numZipsPerLD["max_zips_per_LD",1]))
 # 
 # ## plot for a single LD to test the function
 # p <- plotDistrictAndZipCodes_redist(allZipMaps=WA_state_zipCodes_proj,
 #         allDistrictMaps=LDs_redist_proj,
 #         oldDistrictMaps=WA_stateLegDists_proj,
 #         zip_LDredist_shrink1km_intersects_proj_plain,
-#         district_short_name="LD_1",
+#         district_short_name="LD_36",
 #         savePlot = here("./test.pdf")
 # )
 # p
 
 
-tmap_options(max.categories = as.integer(numZipsPerLD["max_zips_per_LD",1]))
-
 #### plots for all LDs
-plotOutDir <- "output_to_share/version2_2022_Nov_redistricting2022/LDredist_zip_codes_uncurated_v2_2022_Nov1_plots"
+plotOutDir <- "output_to_share/version3_2022_Nov_redistricting2022_prettier/LDredist_zip_codes_uncurated_v3_2022_Nov2_plots"
 allPlots <- list()
 for(thisLD in unique(zip_LDredist_shrink1km_intersects_proj_plain$districtName)) {
     #cat("making plot for LD",thisLD,"\n")
-    pdfFile <- paste(plotOutDir, "/", thisLD, "_redist_uncurated_v2_2022_Nov1_plot.pdf",sep="" )
+    pdfFile <- paste(plotOutDir, "/", thisLD, "_redist_uncurated_v3_2022_Nov2_plot.pdf",sep="" )
     pdfFile <- here(pdfFile)
     
     allPlots[[thisLD]] <- plotDistrictAndZipCodes_redist(allZipMaps=WA_state_zipCodes_proj,
@@ -297,7 +304,7 @@ for(thisLD in unique(zip_LDredist_shrink1km_intersects_proj_plain$districtName))
 }
 
 ## show one plot
-allPlots[["LD_1"]]
+allPlots[["LD_36"]]
 ```
 
 
