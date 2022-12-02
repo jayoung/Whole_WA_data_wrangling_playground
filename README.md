@@ -2,11 +2,37 @@
 
 Goal:  playground to test code to look at Whole WA data
 
-The git repo lives [here](https://github.com/jayoung/Whole_WA_data_wrangling) 
+The git repo lives [here](https://github.com/jayoung/Whole_WA_data_wrangling). Maybe I should move it [here](https://github.com/Whole-Washington)
 
 Who's playing? Everyone is welcome.
 - Janet Young (@jayoung). I started this repo. My expertise is mostly in R, so there's a bias towards R code. (I'm a beginner at using git for team projects - might need advice on handling pull requests, etc, use of different branches, etc)  
 - @Frijol (maybe?)
+
+## big picture planning
+
+we could create tools for two types of usage:
+
+1. to enable all Whole WA volunteers to be able to explore data. Must be very user friendly. Current google sheets are OK, but some people struggle with those.
+
+2. for more advanced data wranglers to explore questions. Stay focussed on **actionable** questions: there's a lot of questions we COULD spend time asking, but not all are useful to the campaign.
+
+Possible technologies
+- continue with google sheets
+- shiny app
+- R reports (pdf? html?)
+- google colab?  (I think we can use R via ipynb files there)
+
+
+Code modules to work on, maybe:
+- importing data from google sheets into R. Make it easy to update raw data regularly. regular updated data and make plots. Kelsey did give me the link to the master database file.  
+- geographic analysis: LD counts, city counts
+- create a shiny app.  include current data but also zoomable maps
+- how to plug shiny apps in to the Whole WA (or other) website - where would we HOST a shiny app?
+
+
+Make sure we have plenty of human redundancy for code maintenance/data updates: we WILL be taking vacations.
+
+
 
 ## repository organization
 
@@ -43,7 +69,6 @@ would be nice to have a scale bar on those maps (e.g. 1km)
 
 [first set of maps we were using](https://www.arcgis.com/apps/mapviewer/index.html?layers=648a84ebf320484e9d73717f76d1d042) uses old boundaries
 
-
 # other notes on how to code stuff
 
 git tip: I was having trouble with `git push` hanging before completion, after I added the pdf plot outputs to the repo. Simple solution, described [here](https://stackoverflow.com/questions/15843937/git-push-hangs-after-total-line/68711337#68711337):
@@ -54,7 +79,6 @@ git config --get http.postBuffer
 git config --local http.postBuffer 157286400
 git config --get http.postBuffer
     # shows I did set it 157286400
-
 ```
 and start the push again.  Something to do with max upload chunk size and having files that exceed that.
 
@@ -63,6 +87,8 @@ and start the push again.  Something to do with max upload chunk size and having
 the tidycensus R package looks useful.  See [`test_geography_code.md`](test_geography_code.md)
 
 ### Other tools to explore
+
+Google colab, and R within ipynb notebooks
 
 #### R packages
 
